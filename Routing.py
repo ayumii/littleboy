@@ -11,8 +11,7 @@ prev = []
 path = []
 directions = []
 pq = queue.PriorityQueue()
-url = 'http://showmyway.comp.nus.edu.sg/getMapInfo.php?Building=COM1&Level=2'
-mapinfo = json.load(urllib.urlopen(url))
+
 
 def createGraph():
 	nodeConnectList = []
@@ -111,6 +110,12 @@ def provideDirections(nextCheckPoint):
                 if dist < 10:
                         break
         return True
+
+
+building = raw_input()
+level = raw_input()
+url = 'http://showmyway.comp.nus.edu.sg/getMapInfo.php?Building=%s&Level=%s' %(building, level)
+mapinfo = json.load(urllib.urlopen(url))
 
 createGraph()
 startPlace = raw_input()

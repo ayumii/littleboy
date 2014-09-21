@@ -11,9 +11,21 @@ prev = []
 path = []
 directions = []
 pq = queue.PriorityQueue()
-
+mapinfo = json.loads('{}')
+northAt = 0
+pos_x = 0
+pos_y = 0
 
 def createGraph():
+        building = raw_input()
+        level = raw_input()
+        url = 'http://showmyway.comp.nus.edu.sg/getMapInfo.php?Building=%s&Level=%s' %(building, level)
+        try:
+                mapinfo = json.load(urllib.urlopen(url))
+        except:
+                raise Exception("no signal")
+
+        northAt = int(mapinfo['info']['northAt'])
 	nodeConnectList = []
 	nodeConnectVector = []
 	for i in range(len(mapinfo['map'])):
@@ -52,9 +64,12 @@ def createGraph():
 			AdjVector.append(integerPair)
 		AdjList.append(AdjVector)
 
+	return mapinfo, northAt
+
 def searchNodeId(nodeName):
         for i in mapinfo['map']:
                 if i['nodeName'].lower() == nodeName.lower():
+                        print "found"
                         return i['nodeId']
         raise Exception("invalid location!")
 
@@ -99,38 +114,76 @@ def SSSP(start, end):
         
 	return path
 
-def provideDirections(nextCheckPoint):
+def provideDirections(nextCheckPoint, pos_x, pos_y):
         while True:
-                pos_x, pos_y = input()
+                distance, heading = input()
+                #compensating for map northAt
+                heading = int(heading) - (360 - northAt)
+                heading %= 360
+                
+                #calculating displacement
+                pos_x_delta = distance * math.sin(math.radians(heading))
+                pos_y_delta = distance * math.cos(math.radians(heading))
+
+                #calculating new position
+                pos_x = float(pos_x) + pos_x_delta
+                pos_y = float(pos_y) + pos_y_delta
+
+                #getting coordinates of next checkpoint
                 checkPoint_x = int(mapinfo['map'][nextCheckPoint - 1]['x'])
                 checkPoint_y = int(mapinfo['map'][nextCheckPoint - 1]['y'])
                 dist = math.sqrt(int(int(pos_x - checkPoint_x)**2 + int(pos_y - checkPoint_y)**2))
-                direction = [pos_x - checkPoint_x, pos_y - checkPoint_y]
+                checkpoint_direction = [checkPoint_x - pos_x, checkPoint_y - pos_y]
+                try:
+                        tan_direction = checkpoint_direction[1] / checkpoint_direction[0]
+                except ZeroDivisionError:
+                        tan_direction = sys.maxint
+                print "tan_division", tan_direction
+                heading_direction = math.degrees(math.atan(tan_direction))
+                if checkpoint_direction[1] >= 0 and checkpoint_direction[0] >= 0:
+                        heading_direction = 90 - heading_direction
+                elif checkpoint_direction[1] < 0 and checkpoint_direction[0] >= 0:
+                        heading_direction = 90 - heading_direction
+                elif checkpoint_direction[1] < 0 and checkpoint_direction[0] < 0:
+                        heading_direction = 270 - heading_direction
+                else:
+                        heading_direction = 270 - heading_direction
+
+                direction = [checkPoint_x - pos_x, checkPoint_y - pos_y, heading_direction - heading]
                 print direction
                 if dist < 10:
                         break
-        return True
+        return True, pos_x, pos_y
 
 
-building = raw_input()
-level = raw_input()
-url = 'http://showmyway.comp.nus.edu.sg/getMapInfo.php?Building=%s&Level=%s' %(building, level)
-mapinfo = json.load(urllib.urlopen(url))
+graphCreated = False
+while not graphCreated:
+        try:
+                mapinfo, northAt = createGraph()
+                graphCreated = True
+        except Exception:
+                print "NO INTERNET SIGNAL!"
+                graphCreated = False
 
-createGraph()
+print "northAt = ", northAt
 startPlace = raw_input()
 destPlace = raw_input()
 try:
         startNode = int(searchNodeId(startPlace))
         destNode = int(searchNodeId(destPlace))
 except Exception:
-        print "INVALID!"
+        print "INVALID LOCATION!"
 else:        
         path = SSSP(startNode, destNode)
         reachCheckPoint = True
+        nextCheckPoint = path.pop()
+        pos_x = mapinfo['map'][nextCheckPoint-1]['x']
+        pos_y = mapinfo['map'][nextCheckPoint-1]['y']
+        print "pos_x = ", pos_x, " pos_y = ", pos_y
+        
         while path:
                 if reachCheckPoint:
                         reachCheckPoint = False
                         nextCheckPoint = path.pop()
                         print nextCheckPoint, mapinfo['map'][nextCheckPoint-1]['nodeName']
-                reachCheckPoint = provideDirections(nextCheckPoint)
+                reachCheckPoint, pos_x, pos_y = provideDirections(nextCheckPoint, pos_x, pos_y)

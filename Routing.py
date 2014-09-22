@@ -118,7 +118,7 @@ def provideDirections(nextCheckPoint, pos_x, pos_y):
         while True:
                 distance, heading = input()
                 #compensating for map northAt
-                heading = int(heading) - (360 - northAt)
+                #heading = int(heading) - (360 - northAt)
                 heading %= 360
                 
                 #calculating displacement
@@ -128,17 +128,21 @@ def provideDirections(nextCheckPoint, pos_x, pos_y):
                 #calculating new position
                 pos_x = float(pos_x) + pos_x_delta
                 pos_y = float(pos_y) + pos_y_delta
-
+                print "current coordinates (", pos_x, ", ", pos_y, " )"
                 #getting coordinates of next checkpoint
                 checkPoint_x = int(mapinfo['map'][nextCheckPoint - 1]['x'])
                 checkPoint_y = int(mapinfo['map'][nextCheckPoint - 1]['y'])
                 dist = math.sqrt(int(int(pos_x - checkPoint_x)**2 + int(pos_y - checkPoint_y)**2))
                 checkpoint_direction = [checkPoint_x - pos_x, checkPoint_y - pos_y]
+
                 try:
                         tan_direction = checkpoint_direction[1] / checkpoint_direction[0]
                 except ZeroDivisionError:
-                        tan_direction = sys.maxint
-                print "tan_division", tan_direction
+                        if checkpoint_direction[1] >= 0:
+                                tan_direction = sys.maxint
+                        else:
+                                tan_direction = - sys.maxint - 1
+
                 heading_direction = math.degrees(math.atan(tan_direction))
                 if checkpoint_direction[1] >= 0 and checkpoint_direction[0] >= 0:
                         heading_direction = 90 - heading_direction
@@ -149,9 +153,20 @@ def provideDirections(nextCheckPoint, pos_x, pos_y):
                 else:
                         heading_direction = 270 - heading_direction
 
-                direction = [checkPoint_x - pos_x, checkPoint_y - pos_y, heading_direction - heading]
+                direction = '%s %lf degrees, %lf'
+                if heading_direction - heading >= 10:
+                        turn_instruction = 'turn clockwise'
+                        direction = direction %(turn_instruction, heading_direction - heading, dist)
+                elif heading_direction - heading <= -10:
+                        turn_instruction = 'turn anticlockwise'
+                        direction = direction %(turn_instruction, heading_direction - heading, dist)
+                else:
+                        turn_instruction = 'go straight'
+                        direction = direction %(turn_instruction, heading_direction - heading, dist)
+
                 print direction
-                if dist < 10:
+                
+                if dist < 20:
                         break
         return True, pos_x, pos_y
 
@@ -187,3 +202,5 @@ else:
                         nextCheckPoint = path.pop()
                         print nextCheckPoint, mapinfo['map'][nextCheckPoint-1]['nodeName']
                 reachCheckPoint, pos_x, pos_y = provideDirections(nextCheckPoint, pos_x, pos_y)
+
+        print "destination reached!"

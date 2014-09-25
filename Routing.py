@@ -117,6 +117,10 @@ def SSSP(start, end):
 def provideDirections(nextCheckPoint, pos_x, pos_y):
         while True:
                 distance, heading = input()
+
+                if distance < 0:
+                        raise Exception("negative distance invalid")
+
                 #compensating for map northAt
                 #heading = int(heading) - (360 - northAt)
                 heading %= 360
@@ -154,20 +158,28 @@ def provideDirections(nextCheckPoint, pos_x, pos_y):
                         heading_direction = 270 - heading_direction
 
                 direction = '%s %lf degrees, %lf'
-                if heading_direction - heading >= 10:
+                change_direction = heading_direction - heading
+                if change_direction > 180:
+                        change_direction = -1 * (change_direction - 180)
+                elif change_direction < -180:
+                        change_direction = -1 * (change_direction + 180)
+                        
+                if change_direction >= 10:
                         turn_instruction = 'turn clockwise'
-                        direction = direction %(turn_instruction, heading_direction - heading, dist)
-                elif heading_direction - heading <= -10:
+                        direction = direction %(turn_instruction, change_direction, dist)
+                elif change_direction <= -10:
                         turn_instruction = 'turn anticlockwise'
-                        direction = direction %(turn_instruction, heading_direction - heading, dist)
+                        direction = direction %(turn_instruction, abs(change_direction), dist)
                 else:
                         turn_instruction = 'go straight'
-                        direction = direction %(turn_instruction, heading_direction - heading, dist)
+                        direction = direction %(turn_instruction, change_direction, dist)
 
                 print direction
                 
                 if dist < 20:
+                        print "checkpoint reached!"
                         break
+                
         return True, pos_x, pos_y
 
 
@@ -201,6 +213,9 @@ else:
                         reachCheckPoint = False
                         nextCheckPoint = path.pop()
                         print nextCheckPoint, mapinfo['map'][nextCheckPoint-1]['nodeName']
-                reachCheckPoint, pos_x, pos_y = provideDirections(nextCheckPoint, pos_x, pos_y)
+                try:
+                        reachCheckPoint, pos_x, pos_y = provideDirections(nextCheckPoint, pos_x, pos_y)
+                except Exception:
+                        print "INVALID DISTANCE!"
 
         print "destination reached!"
